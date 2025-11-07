@@ -110,14 +110,24 @@ function getCategoryDescendants(PDO $pdo, int $categoryId): array {
  * @param int $parentId ID dari induk kategori (default 0 untuk root).
  * @return array Struktur pohon kategori.
  */
-function buildCategoryTree(PDO $pdo, int $parentId = 0): array {
+function buildCategoryTree(PDO $pdo, int $parentId = 0, string $searchTerm = ''): array {
     $tree = [];
-    $stmt = $pdo->prepare("SELECT id, name FROM categories WHERE parent_id = ? ORDER BY name ASC");
-    $stmt->execute([$parentId]);
+    $sql = "SELECT id, name FROM categories WHERE parent_id = ?";
+    $params = [$parentId];
+
+    if (!empty($searchTerm)) {
+        $sql .= " AND name LIKE ?";
+        $params[] = '%' . $searchTerm . '%';
+    }
+
+    $sql .= " ORDER BY name ASC";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
 
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         // Ambil anak-anak dari kategori ini (rekursif)
-        $children = buildCategoryTree($pdo, $row['id']);
+        $children = buildCategoryTree($pdo, $row['id'], $searchTerm);
         if (!empty($children)) {
             $row['children'] = $children; // Tambahkan array 'children' jika ada
         } else {
